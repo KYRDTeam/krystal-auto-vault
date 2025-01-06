@@ -10,7 +10,7 @@ import {
   TOKEN_2022_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
 } from "@solana/spl-token";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { buildTransaction, wait } from "./helper";
 
 describe("krystal-auto-vault", () => {
@@ -63,6 +63,8 @@ describe("krystal-auto-vault", () => {
       [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
       program.programId
     );
+
+    console.log("userVault", pda.toBase58());
 
     const pdaAccountInfo = await provider.connection.getAccountInfo(pda);
     if (pdaAccountInfo == null) {
@@ -466,4 +468,38 @@ describe("krystal-auto-vault", () => {
     const accountInfo = await provider.connection.getAccountInfo(tokenAccount);
     expect(accountInfo).to.be.null;
   })
+
+  it("should close account by owner successfully", async () => {
+    // Derive the PDA address
+    const [pda, bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const closeIx = await program.methods
+      .closeUserPda()
+      .accounts({
+        owner: user.publicKey,
+        destination: payer.publicKey,
+      })
+      .instruction();
+
+    const tx = await buildTransaction({
+      connection: provider.connection,
+      payer: payer.publicKey,
+      instructions: [closeIx],
+      signers: [user],
+    })
+
+    const signedTx = await payer.signTransaction(tx);
+    const simulateResult = await provider.connection.simulateTransaction(signedTx);
+    expect(simulateResult.value.err).to.be.null;
+
+    const sig = await provider.connection.sendTransaction(tx);
+    console.log("close account signature", sig);
+
+    await wait(3000);
+    const accountInfo = await provider.connection.getAccountInfo(pda);
+    expect(accountInfo).to.be.null;
+  });
 });

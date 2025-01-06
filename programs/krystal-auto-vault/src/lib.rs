@@ -20,6 +20,10 @@ pub mod krystal_auto_vault {
         Ok(())
     }
 
+    pub fn close_user_pda(_ctx: Context<CloseUserVault>) -> Result<()> {
+        Ok(())
+    }
+
     pub fn initialize_global_state(ctx: Context<InitializeGlobalState>) -> Result<()> {
         let global_state = &mut ctx.accounts.global_state;
         let admin = ctx.accounts.admin.key();
@@ -198,6 +202,22 @@ pub struct CreateUserPDA<'info> {
     )]
     pub user_vault: Account<'info, UserPdaVaultAccount>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CloseUserVault<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [PDA_VAULT_SEED, owner.key().as_ref()],
+        bump = user_vault.bump,
+        close = destination,
+    )]
+    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    /// CHECK
+    #[account(mut)]
+    pub destination: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
