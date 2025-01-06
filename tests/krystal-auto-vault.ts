@@ -41,9 +41,7 @@ describe("krystal-auto-vault", () => {
         .initializeGlobalState()
         .accounts({
           payer: payer.publicKey,
-          globalState: pda,
           admin: payer.publicKey,
-          systemProgram: SystemProgram.programId,
         })
         .rpc();
 
@@ -74,8 +72,6 @@ describe("krystal-auto-vault", () => {
         .accounts({
           payer: payer.publicKey,
           owner: user.publicKey,
-          userVault: pda,
-          systemProgram: SystemProgram.programId,
         })
         .rpc();
 
@@ -178,9 +174,7 @@ describe("krystal-auto-vault", () => {
       .transferLamports(new BN(1))
       .accounts({
         user: payer.publicKey,
-        userVault: pda,
         to: payer.publicKey,
-        systemProgram: SystemProgram.programId,
       })
       .instruction();
 
@@ -201,9 +195,7 @@ describe("krystal-auto-vault", () => {
       .transferLamports(new BN(1))
       .accounts({
         user: user.publicKey,
-        userVault: pda,
         to: payer.publicKey,
-        systemProgram: SystemProgram.programId,
       })
       .instruction();
 
@@ -239,7 +231,6 @@ describe("krystal-auto-vault", () => {
       .transferToken(new BN(1))
       .accounts({
         user: user.publicKey,
-        userVault: pda,
         fromTokenAccount: pdaAta,
         toTokenAccount: payerAta,
         mint: tokenMint.publicKey,
@@ -267,11 +258,6 @@ describe("krystal-auto-vault", () => {
 
     const operator = Keypair.generate();
 
-    const [globalState, globalStateBump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("globalState")],
-      program.programId
-    );
-
     const pdaAta = getAssociatedTokenAddressSync(tokenMint.publicKey, pda, true, TOKEN_2022_PROGRAM_ID);
     const payerAta = getAssociatedTokenAddressSync(tokenMint.publicKey, payer.publicKey, false, TOKEN_2022_PROGRAM_ID);
     const createRecipientAtaIx = createAssociatedTokenAccountIdempotentInstruction(
@@ -283,8 +269,6 @@ describe("krystal-auto-vault", () => {
       .accounts({
         operator: operator.publicKey,
         user: user.publicKey,
-        userVault: pda,
-        globalState: globalState,
         fromTokenAccount: pdaAta,
         toTokenAccount: payerAta,
         mint: tokenMint.publicKey,
@@ -312,11 +296,6 @@ describe("krystal-auto-vault", () => {
       program.programId
     );
 
-    const [globalState, globalStateBump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("globalState")],
-      program.programId
-    );
-
     const pdaAta = getAssociatedTokenAddressSync(tokenMint.publicKey, pda, true, TOKEN_2022_PROGRAM_ID);
     const payerAta = getAssociatedTokenAddressSync(tokenMint.publicKey, payer.publicKey, false, TOKEN_2022_PROGRAM_ID);
     const createRecipientAtaIx = createAssociatedTokenAccountIdempotentInstruction(
@@ -328,8 +307,6 @@ describe("krystal-auto-vault", () => {
       .accounts({
         operator: payer.publicKey,
         user: user.publicKey,
-        userVault: pda,
-        globalState: globalState,
         fromTokenAccount: pdaAta,
         toTokenAccount: payerAta,
         mint: tokenMint.publicKey,
@@ -372,8 +349,6 @@ describe("krystal-auto-vault", () => {
       .accounts({
         operator: payer.publicKey,
         user: user.publicKey,
-        userVault: pda,
-        globalState: globalState,
         fromTokenAccount: pdaAta,
         toTokenAccount: payerAta,
         mint: tokenMint.publicKey,
@@ -409,7 +384,6 @@ describe("krystal-auto-vault", () => {
       .approveToken(new BN(10))
       .accounts({
         user: user.publicKey,
-        userVault: pda,
         tokenAccount: tokenAccount,
         delegate: delegate,
         tokenProgram: TOKEN_2022_PROGRAM_ID
@@ -420,7 +394,6 @@ describe("krystal-auto-vault", () => {
       .revokeApproval()
       .accounts({
         user: user.publicKey,
-        userVault: pda,
         tokenAccount: tokenAccount,
         delegate: delegate,
         tokenProgram: TOKEN_2022_PROGRAM_ID
@@ -459,7 +432,6 @@ describe("krystal-auto-vault", () => {
     .withdrawToken()
     .accounts({
       user: user.publicKey,
-      userVault: pda,
       fromTokenAccount: tokenAccount,
       toTokenAccount: destATA,
       mint: tokenMint.publicKey,
@@ -471,7 +443,6 @@ describe("krystal-auto-vault", () => {
       .closeTokenAccount()
       .accounts({
         user: user.publicKey,
-        userVault: pda,
         tokenAccount: tokenAccount,
         destination: payer.publicKey,
         tokenProgram: TOKEN_2022_PROGRAM_ID
