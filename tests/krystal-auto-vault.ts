@@ -10,8 +10,11 @@ import {
   TOKEN_2022_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
 } from "@solana/spl-token";
-import { assert, expect } from "chai";
+import { expect } from "chai";
 import { buildTransaction, wait } from "./helper";
+
+const UserVaultSeed = "userVault";
+const GlobalStateSeed = "globalState";
 
 describe("krystal-auto-vault", () => {
   // Configure the client to use the local cluster.
@@ -28,7 +31,7 @@ describe("krystal-auto-vault", () => {
   it("should create PDA global account with owner data", async () => {
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("globalState")],
+      [Buffer.from(GlobalStateSeed)],
       program.programId
     );
     console.log("globalState PDA:", pda.toBase58());
@@ -60,7 +63,7 @@ describe("krystal-auto-vault", () => {
 
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -80,7 +83,7 @@ describe("krystal-auto-vault", () => {
       console.log("Create PDA signature", tx);
     }
 
-    const userVault = await program.account.userPdaVaultAccount.fetch(pda);
+    const userVault = await program.account.userVault.fetch(pda);
     expect(userVault.owner.toBase58()).to.equal(user.publicKey.toBase58());
     expect(userVault.bump).to.equal(bump);
   });
@@ -111,7 +114,7 @@ describe("krystal-auto-vault", () => {
     );
 
     const [userVaultPda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
     const pdaATA = getAssociatedTokenAddressSync(tokenMint.publicKey, userVaultPda, true, TOKEN_2022_PROGRAM_ID);
@@ -148,7 +151,7 @@ describe("krystal-auto-vault", () => {
     const userPublicKey = user.publicKey;
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), userPublicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), userPublicKey.toBuffer()],
       program.programId
     );
 
@@ -219,7 +222,7 @@ describe("krystal-auto-vault", () => {
   it("should transfer spl token by owner successfully", async () => {
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -254,7 +257,7 @@ describe("krystal-auto-vault", () => {
   it("should fail to transfer token by non-operator", async () => {
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -294,7 +297,7 @@ describe("krystal-auto-vault", () => {
   it("should transfer spl token by operator successfully", async () => {
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -331,12 +334,7 @@ describe("krystal-auto-vault", () => {
   it("should withdraw token by operator successfully", async () => {
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
-      program.programId
-    );
-
-    const [globalState, globalStateBump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("globalState")],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -374,7 +372,7 @@ describe("krystal-auto-vault", () => {
 
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -421,8 +419,8 @@ describe("krystal-auto-vault", () => {
 
   it("should withdraw and close token account by operator successfully", async () => {
     // Derive the PDA address
-    const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+    const [pda, _bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -431,15 +429,15 @@ describe("krystal-auto-vault", () => {
     const createDestAta = createAssociatedTokenAccountIdempotentInstruction(payer.publicKey, destATA, payer.publicKey, tokenMint.publicKey, TOKEN_2022_PROGRAM_ID);
 
     const withdrawIx = await program.methods
-    .withdrawToken()
-    .accounts({
-      user: user.publicKey,
-      fromTokenAccount: tokenAccount,
-      toTokenAccount: destATA,
-      mint: tokenMint.publicKey,
-      tokenProgram: TOKEN_2022_PROGRAM_ID
-    })
-    .instruction();
+      .withdrawToken()
+      .accounts({
+        user: user.publicKey,
+        fromTokenAccount: tokenAccount,
+        toTokenAccount: destATA,
+        mint: tokenMint.publicKey,
+        tokenProgram: TOKEN_2022_PROGRAM_ID
+      })
+      .instruction();
 
     const closeIx = await program.methods
       .closeTokenAccount()
@@ -472,7 +470,7 @@ describe("krystal-auto-vault", () => {
   it("should close account by owner successfully", async () => {
     // Derive the PDA address
     const [pda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("userPdaVault"), user.publicKey.toBuffer()],
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
       program.programId
     );
 
@@ -498,7 +496,7 @@ describe("krystal-auto-vault", () => {
     const sig = await provider.connection.sendTransaction(tx);
     console.log("close account signature", sig);
 
-    await wait(3000);
+    await wait(5000);
     const accountInfo = await provider.connection.getAccountInfo(pda);
     expect(accountInfo).to.be.null;
   });

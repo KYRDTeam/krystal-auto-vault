@@ -5,7 +5,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 declare_id!("6tgjvHkFUUUbbacEWg225H6AazxoSTso8ix9vkXFScTU");
 
-pub const PDA_VAULT_SEED: &[u8] = b"userPdaVault";
+pub const PDA_VAULT_SEED: &[u8] = b"userVault";
 pub const PDA_GLOBAL_STATE_SEED: &[u8] = b"globalState";
 pub const DISCRIMINATOR_SIZE: usize = 8;
 
@@ -196,11 +196,11 @@ pub struct CreateUserPDA<'info> {
     #[account(
         init,
         payer = payer,
-        space = DISCRIMINATOR_SIZE + UserPdaVaultAccount::INIT_SPACE,
+        space = DISCRIMINATOR_SIZE + UserVault::INIT_SPACE,
         seeds = [PDA_VAULT_SEED, owner.key().as_ref()],
         bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     pub system_program: Program<'info, System>,
 }
 
@@ -214,7 +214,7 @@ pub struct CloseUserVault<'info> {
         bump = user_vault.bump,
         close = destination,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     /// CHECK
     #[account(mut)]
     pub destination: AccountInfo<'info>,
@@ -274,7 +274,7 @@ pub struct UpdateOperator<'info> {
 
 #[account]
 #[derive(InitSpace)]
-pub struct UserPdaVaultAccount {
+pub struct UserVault {
     pub owner: Pubkey,
     pub bump: u8,
 }
@@ -297,7 +297,7 @@ pub struct TransferLamports<'info> {
         seeds = [PDA_VAULT_SEED, user.key().as_ref()],
         bump = user_vault.bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     /// CHECK: safe
     #[account(mut)]
     pub to: AccountInfo<'info>,
@@ -313,7 +313,7 @@ pub struct TransferToken<'info> {
         seeds = [PDA_VAULT_SEED, user.key().as_ref()],
         bump = user_vault.bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     #[account(mut)]
     pub from_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -336,7 +336,7 @@ pub struct TransferByOperator<'info> {
         seeds = [PDA_VAULT_SEED, user.key().as_ref()],
         bump = user_vault.bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     #[account(
         seeds = [PDA_GLOBAL_STATE_SEED],
         bump = global_state.bump,
@@ -365,7 +365,7 @@ pub struct CloseTokenAccountByOperator<'info> {
         seeds = [PDA_VAULT_SEED, user.key().as_ref()],
         bump = user_vault.bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     #[account(
         seeds = [PDA_GLOBAL_STATE_SEED],
         bump = global_state.bump,
@@ -390,7 +390,7 @@ pub struct CloseTokenAccount<'info> {
         seeds = [PDA_VAULT_SEED, user.key().as_ref()],
         bump = user_vault.bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     #[account(mut)]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
     /// CHECK
@@ -409,7 +409,7 @@ pub struct ApproveToken<'info> {
         seeds = [PDA_VAULT_SEED, user.key().as_ref()],
         bump = user_vault.bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     #[account(mut)]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
     /// CHECK
@@ -428,7 +428,7 @@ pub struct RevokeApproval<'info> {
         seeds = [PDA_VAULT_SEED, user.key().as_ref()],
         bump = user_vault.bump,
     )]
-    pub user_vault: Account<'info, UserPdaVaultAccount>,
+    pub user_vault: Account<'info, UserVault>,
     #[account(mut)]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
     /// CHECK
