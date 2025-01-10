@@ -1,7 +1,18 @@
 pub mod token;
 
+use solana_security_txt::security_txt;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Krystal Auto Vault",
+    project_url: "https://krystal.app",
+    contacts: "email:support@krystal.app,link:https://linktr.ee/krystal_defi",
+    policy: "https://github.com/KYRDTeam/krystal-auto-vault/blob/main/SECURITY.md",
+    preferred_languages: "en",
+    source_code: "https://github.com/KYRDTeam/krystal-auto-vault"
+}
 
 declare_id!("6tgjvHkFUUUbbacEWg225H6AazxoSTso8ix9vkXFScTU");
 
