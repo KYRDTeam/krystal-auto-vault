@@ -60,17 +60,16 @@ describe("krystal-auto-vault", () => {
       })
       .instruction();
 
-    try {
-      const tx = await buildTransaction({
-        connection: provider.connection,
-        payer: payer.publicKey,
-        signers: [newAdmin],
-        instructions: [updateAdminIx],
-      });
-    } catch (err) {
-      expect(err).to.not.be.null;
-      expect(err.message).to.include("Cannot sign with non signer key");
-    }
+    const tx = await buildTransaction({
+      connection: provider.connection,
+      payer: payer.publicKey,
+      signers: [newAdmin],
+      instructions: [updateAdminIx],
+    });
+
+    const signedTx = await payer.signTransaction(tx);
+    const simulateResult = await provider.connection.simulateTransaction(signedTx, { sigVerify: true });
+    expect(simulateResult.value.err).to.not.be.null;
   });
 
   it("should add and remove operator successfully", async () => {
@@ -101,6 +100,30 @@ describe("krystal-auto-vault", () => {
     const simulateResult = await provider.connection.simulateTransaction(signedTx, { sigVerify: true });
     expect(simulateResult.value.err).to.be.null;
   });
+
+  it("should fail to add operator by non-admin account", async () => {
+    const newAdmin = Keypair.generate();
+
+    const updateAdminIx = await program.methods
+      .updateOperator(true)
+      .accounts({
+        admin: newAdmin.publicKey,
+        operator: newAdmin.publicKey,
+      })
+      .instruction();
+
+    const tx = await buildTransaction({
+      connection: provider.connection,
+      payer: payer.publicKey,
+      signers: [newAdmin],
+      instructions: [updateAdminIx],
+    });
+
+    const signedTx = await payer.signTransaction(tx);
+
+    const simulateResult = await provider.connection.simulateTransaction(signedTx, { sigVerify: true });
+    expect(simulateResult.value.err).to.not.be.null;
+  })
 
   it("should create PDA global account with owner data", async () => {
     // Derive the PDA address
