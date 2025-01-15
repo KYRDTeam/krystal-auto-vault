@@ -1,6 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program, BN } from "@coral-xyz/anchor";
-import { KrystalAutoVault } from "../target/types/krystal_auto_vault";
+import anchor from "@coral-xyz/anchor";
+import { KrystalAutoVault } from "../target/types/krystal_auto_vault.js";
 import {
   Keypair, PublicKey, SystemProgram,
 } from "@solana/web3.js";
@@ -11,7 +10,8 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
 } from "@solana/spl-token";
 import { expect } from "chai";
-import { buildTransaction, wait } from "./helper";
+import { buildTransaction } from "./helper.js";
+import pRetry from 'p-retry';
 
 const UserVaultSeed = "userVault";
 const GlobalStateSeed = "globalState";
@@ -20,13 +20,87 @@ describe("krystal-auto-vault", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.KrystalAutoVault as Program<KrystalAutoVault>;
+  const program = anchor.workspace.KrystalAutoVault as anchor.Program<KrystalAutoVault>;
   const provider = anchor.AnchorProvider.env();
   const payer = provider.wallet;
   const user = Keypair.generate();
   const tokenMint = Keypair.generate();
 
   console.log("user:", user.publicKey.toBase58());
+
+  it("should update admin successfully", async () => {
+    const newAdmin = Keypair.generate();
+    const updateAdminIx = await program.methods
+      .updateAdmin()
+      .accounts({
+        admin: payer.publicKey,
+        newAdmin: newAdmin.publicKey,
+      })
+      .instruction();
+
+    const tx = await buildTransaction({
+      connection: provider.connection,
+      payer: payer.publicKey,
+      signers: [],
+      instructions: [updateAdminIx],
+    });
+
+    const signedTx = await payer.signTransaction(tx);
+    const simulateResult = await provider.connection.simulateTransaction(signedTx, { sigVerify: true });
+    expect(simulateResult.value.err).to.be.null;
+  });
+
+  it("should fail to update admin by non-admin account", async () => {
+    const newAdmin = Keypair.generate();
+    const updateAdminIx = await program.methods
+      .updateAdmin()
+      .accounts({
+        admin: newAdmin.publicKey,
+        newAdmin: newAdmin.publicKey,
+      })
+      .instruction();
+
+    try {
+      const tx = await buildTransaction({
+        connection: provider.connection,
+        payer: payer.publicKey,
+        signers: [newAdmin],
+        instructions: [updateAdminIx],
+      });
+    } catch (err) {
+      expect(err).to.not.be.null;
+      expect(err.message).to.include("Cannot sign with non signer key");
+    }
+  });
+
+  it("should add and remove operator successfully", async () => {
+    const operator = Keypair.generate();
+    const addOperatorIx = await program.methods
+      .updateOperator(true)
+      .accounts({
+        admin: payer.publicKey,
+        operator: operator.publicKey,
+      })
+      .instruction();
+
+    const removeOperatorIx = await program.methods
+      .updateOperator(false).accounts({
+        admin: payer.publicKey,
+        operator: operator.publicKey,
+      })
+      .instruction();
+
+    const tx = await buildTransaction({
+      connection: provider.connection,
+      payer: payer.publicKey,
+      signers: [],
+      instructions: [addOperatorIx, removeOperatorIx],
+    });
+
+    const signedTx = await payer.signTransaction(tx);
+    const simulateResult = await provider.connection.simulateTransaction(signedTx, { sigVerify: true });
+    expect(simulateResult.value.err).to.be.null;
+  });
 
   it("should create PDA global account with owner data", async () => {
     // Derive the PDA address
@@ -139,10 +213,22 @@ describe("krystal-auto-vault", () => {
     const txSig = await provider.connection.sendTransaction(signedTx);
     console.log("Create Mint signature", txSig);
 
-    await wait(3000);
+    // Wait for the transaction to be confirmed
+    const accountInfo = await pRetry(async () => {
+      const info = await provider.connection.getAccountInfo(pdaATA);
+      if (info == null) {
+        throw new Error("Account not created yet");
+      }
+      return info;
+    }, {
+      retries: 20,
+      minTimeout: 1000,
+      maxTimeout: 1000,
+      factor: 1
+    })
 
-    const accountInfo = await provider.connection.getAccountInfo(pdaATA);
     expect(accountInfo).to.not.be.null;
+
     const userVaultAccount = await provider.connection.getTokenAccountBalance(pdaATA);
     expect(userVaultAccount.value.amount).to.equal(balance.toString());
   });
@@ -176,7 +262,7 @@ describe("krystal-auto-vault", () => {
 
     // Transfer 1 lamport to the user
     const transferByAdminIx = await program.methods
-      .transferLamports(new BN(1))
+      .transferLamports(new anchor.BN(1))
       .accounts({
         user: payer.publicKey,
         to: payer.publicKey,
@@ -197,7 +283,7 @@ describe("krystal-auto-vault", () => {
 
     // Transfer 1 lamport to the user
     const transferLamportsIx = await program.methods
-      .transferLamports(new BN(1))
+      .transferLamports(new anchor.BN(1))
       .accounts({
         user: user.publicKey,
         to: payer.publicKey,
@@ -233,7 +319,7 @@ describe("krystal-auto-vault", () => {
     );
 
     const transferIx = await program.methods
-      .transferToken(new BN(1))
+      .transferToken(new anchor.BN(1))
       .accounts({
         user: user.publicKey,
         fromTokenAccount: pdaAta,
@@ -270,7 +356,7 @@ describe("krystal-auto-vault", () => {
     );
 
     const transferIx = await program.methods
-      .transferByOperator(new BN(1))
+      .transferByOperator(new anchor.BN(1))
       .accounts({
         operator: operator.publicKey,
         user: user.publicKey,
@@ -308,7 +394,7 @@ describe("krystal-auto-vault", () => {
     );
 
     const transferIx = await program.methods
-      .transferByOperator(new BN(1))
+      .transferByOperator(new anchor.BN(1))
       .accounts({
         operator: payer.publicKey,
         user: user.publicKey,
@@ -368,6 +454,46 @@ describe("krystal-auto-vault", () => {
     expect(simulateResult.value.err).to.be.null;
   });
 
+  it("should fail to withdraw token by non-operator", async () => {
+    // Derive the PDA address
+    const [pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const operator = Keypair.generate();
+
+    const pdaAta = getAssociatedTokenAddressSync(tokenMint.publicKey, pda, true, TOKEN_2022_PROGRAM_ID);
+    const payerAta = getAssociatedTokenAddressSync(tokenMint.publicKey, payer.publicKey, false, TOKEN_2022_PROGRAM_ID);
+    const createRecipientAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+      payer.publicKey, payerAta, payer.publicKey, tokenMint.publicKey, TOKEN_2022_PROGRAM_ID
+    );
+
+    const transferIx = await program.methods
+      .withdrawTokenByOperator()
+      .accounts({
+        operator: operator.publicKey,
+        user: user.publicKey,
+        fromTokenAccount: pdaAta,
+        toTokenAccount: payerAta,
+        mint: tokenMint.publicKey,
+        tokenProgram: TOKEN_2022_PROGRAM_ID
+      })
+      .instruction();
+
+    const tx = await buildTransaction({
+      connection: provider.connection,
+      payer: payer.publicKey,
+      instructions: [createRecipientAtaIx, transferIx],
+      signers: [operator],
+    })
+
+    const signedTx = await payer.signTransaction(tx);
+    const simulateResult = await provider.connection.simulateTransaction(signedTx);
+    console.log("withdraw by non-operator simulate result", simulateResult.value.err);
+    expect(simulateResult.value.err).to.not.be.null;
+  })
+
   it("should approve and revoke approval successfully", async () => {
 
     // Derive the PDA address
@@ -381,7 +507,7 @@ describe("krystal-auto-vault", () => {
     const delegate = payer.publicKey;
 
     const approveIx = await program.methods
-      .approveToken(new BN(10))
+      .approveToken(new anchor.BN(10))
       .accounts({
         user: user.publicKey,
         tokenAccount: tokenAccount,
@@ -462,8 +588,20 @@ describe("krystal-auto-vault", () => {
 
     const sig = await provider.connection.sendTransaction(signedTx);
     console.log("withdraw and close token account signature", sig);
-    await wait(2000);
-    const accountInfo = await provider.connection.getAccountInfo(tokenAccount);
+
+    const accountInfo = await pRetry(async () => {
+      const info = await provider.connection.getAccountInfo(tokenAccount);
+      if (info != null) {
+        throw new Error("Account not closed yet");
+      }
+      return info;
+    }, {
+      retries: 20,
+      minTimeout: 1000,
+      maxTimeout: 1000,
+      factor: 1
+    })
+
     expect(accountInfo).to.be.null;
   })
 
@@ -496,8 +634,19 @@ describe("krystal-auto-vault", () => {
     const sig = await provider.connection.sendTransaction(tx);
     console.log("close account signature", sig);
 
-    await wait(5000);
-    const accountInfo = await provider.connection.getAccountInfo(pda);
+    const accountInfo = await pRetry(async () => {
+      const info = await provider.connection.getAccountInfo(pda);
+      if (info != null) {
+        throw new Error("Account not closed yet");
+      }
+
+      return info;
+    }, {
+      retries: 20,
+      minTimeout: 1000,
+      maxTimeout: 1000,
+      factor: 1
+    })
     expect(accountInfo).to.be.null;
   });
 });
