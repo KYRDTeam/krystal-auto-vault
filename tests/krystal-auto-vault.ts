@@ -464,11 +464,21 @@ describe("krystal-auto-vault", () => {
         tokenProgram: TOKEN_2022_PROGRAM_ID
       })
       .instruction();
+    
+      const closeIx = await program.methods
+        .closeAccountByOperator()
+        .accounts({
+          operator: payer.publicKey,
+          user: user.publicKey,
+          tokenAccount: pdaAta,
+          destination: payer.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID
+        }).instruction();
 
     const tx = await buildTransaction({
       connection: provider.connection,
       payer: payer.publicKey,
-      instructions: [createRecipientAtaIx, transferIx],
+      instructions: [createRecipientAtaIx, transferIx, closeIx],
       signers: [],
     })
 
@@ -566,7 +576,7 @@ describe("krystal-auto-vault", () => {
     expect(simulateResult.value.err).to.be.null;
   });
 
-  it("should withdraw and close token account by operator successfully", async () => {
+  it("should withdraw and close token account by user successfully", async () => {
     // Derive the PDA address
     const [pda, _bump] = PublicKey.findProgramAddressSync(
       [Buffer.from(UserVaultSeed), user.publicKey.toBuffer()],

@@ -386,7 +386,7 @@ pub struct CloseTokenAccountByOperator<'info> {
     #[account(mut)]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
     /// CHECK
-    #[account()]
+    #[account(mut)]
     pub destination: AccountInfo<'info>,
     #[account()]
     pub token_program: Interface<'info, TokenInterface>,
@@ -405,7 +405,7 @@ pub struct CloseTokenAccount<'info> {
     #[account(mut)]
     pub token_account: InterfaceAccount<'info, TokenAccount>,
     /// CHECK
-    #[account()]
+    #[account(mut)]
     pub destination: AccountInfo<'info>,
     #[account()]
     pub token_program: Interface<'info, TokenInterface>,
